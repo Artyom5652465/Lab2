@@ -1,0 +1,112 @@
+import cv2
+import numpy as np
+import tkinter as tk
+from tkinter import filedialog
+
+def process_image(method):
+    global img
+    if method == 1:
+        # Высокочастотная фильтрация
+        kernel = np.array([[0, -1, 0],
+                           [-1, 4, -1],
+                           [0, -1, 0]])
+        result = cv2.filter2D(img, -1, kernel)
+    elif method == 2:
+        # Пороговая обработка (метод Оцу)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU)[1]
+        result = thresh
+    elif method == 3:
+        # Адаптивная пороговая обработка
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        result = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+                                       cv2.THRESH_BINARY, 11, 2)
+    else:
+        print("Неверный выбор!")
+        return None
+    return result
+
+def browse_image():
+    global img
+    file_path = filedialog.askopenfilename()
+    prefix = "C:/Users/Матвей/PycharmProjects/pythonProject/"
+
+    result = file_path.replace(prefix, "")
+    img = cv2.imread(result)
+    cv2.imshow('Original Image', img)
+
+def apply_processing():
+    global img
+    method = int(selected_method.get()[0])
+    result = process_image(method)
+    if result is not None:
+        cv2.imshow(selected_method.get(), result)
+
+
+def save_image():
+    global img
+
+    # Сжатие изображения
+    quality = int(quality_scale.get())
+    result, encimg = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, quality])
+
+    decoded_img = cv2.imdecode(encimg, cv2.IMREAD_UNCHANGED)
+
+    # Сохранение декодированного изображения
+
+    print(encimg.shape)
+    # Выбор имени файла
+    ftypes = [('JPEG Files', '*.jpg')]
+    filename = filedialog.asksaveasfilename(filetypes=ftypes, defaultextension='.jpg')
+
+    prefix = "C:/Users/Матвей/PycharmProjects/pythonProject/"
+
+    result = filename.replace(prefix, "")
+
+    # Сохранение в файл
+    if filename:
+        cv2.imwrite(result, decoded_img)
+
+# Создание основного окна
+root = tk.Tk()
+root.title("Обработка изображения")
+
+# Загрузка изображения
+img = None
+
+# Создание кнопки для выбора изображения
+browse_button = tk.Button(root, text="Выбрать изображение", command=browse_image)
+browse_button.pack(pady=10)
+
+# Создание выпадающего списка для выбора метода обработки
+selected_method = tk.StringVar(root)
+selected_method.set("")  # Устанавливаем значение по умолчанию
+
+method_label = tk.Label(root, text="Выберите метод обработки:")
+method_label.pack()
+
+method_options = ["1. Sharp",
+                  "2. Otsu threshold",
+                  "3. Adaptive threshold"]
+
+method_menu = tk.OptionMenu(root, selected_method, *method_options)
+method_menu.pack(pady=10)
+
+# Создание кнопки для применения обработки
+process_button = tk.Button(root, text="Применить обработку", command=apply_processing)
+process_button.pack(pady=10)
+
+quality_scale = tk.Scale(root, from_=0, to=100, orient=tk.HORIZONTAL)
+quality_scale.set(100)
+quality_scale.pack()
+
+save_button = tk.Button(root, text="Save", command=save_image)
+save_button.pack()
+
+
+# Запуск основного цикла событий
+root.mainloop()
+
+# Ожидание закрытия окон OpenCV
+cv2.waitKey(0)
+cv2.destroyAllWindows()
